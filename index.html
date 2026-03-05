@@ -7,14 +7,18 @@
 <style>
 
 body{
-font-family:sans-serif;
-background:#f5f7ff;
+font-family: 'Pretendard', sans-serif;
+background:#f0f2f5;
 text-align:center;
 margin:0;
+color: #333;
 }
 
 h1{
-margin-top:20px;
+margin-top:40px;
+font-size: 2.5em;
+color: #1a237e;
+text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
 }
 
 .container{
@@ -22,19 +26,33 @@ display:flex;
 justify-content:center;
 gap:30px;
 flex-wrap:wrap;
-padding:20px;
+padding:40px 20px;
 }
 
 .card{
 background:white;
-padding:20px;
-border-radius:15px;
-box-shadow:0 5px 15px rgba(0,0,0,0.1);
+padding:30px;
+border-radius:20px;
+box-shadow:0 10px 25px rgba(0,0,0,0.08);
+width: 450px;
+transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+h2 {
+    color: #3949ab;
+    margin-bottom: 20px;
+    font-size: 1.5em;
 }
 
 canvas{
-background:#dff6ff;
-border-radius:10px;
+background:#f8f9fa;
+border-radius:15px;
+margin-top: 20px;
+box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
 }
 
 @keyframes scrollBackground {
@@ -43,7 +61,7 @@ border-radius:10px;
 }
 
 #gameCanvas{
-  background-color: #e8f5e9; /* Fallback color */
+  background-color: #e8f5e9;
   background-image: url('https://www.transparenttextures.com/patterns/paper-fibers.png'), 
                     url('https://images.unsplash.com/photo-1541675154750-0444c7d51e8e?q=80&w=1000&auto=format&fit=crop');
   background-size: auto, cover;
@@ -55,24 +73,56 @@ border-radius:10px;
 }
 
 #dreamCanvas{
-background:#fff8dc;
+    border: 1px solid #e0e0e0;
+}
+
+#dreamInput {
+    padding: 12px 20px;
+    width: 250px;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+#dreamInput:focus {
+    border-color: #3949ab;
 }
 
 button{
-padding:10px 20px;
+padding:12px 25px;
 border:none;
-border-radius:10px;
-background:#4f6cff;
+border-radius:12px;
+background:#3949ab;
 color:white;
 cursor:pointer;
+font-weight: bold;
+font-size: 16px;
+margin-left: 10px;
+transition: background 0.3s;
 }
 
 button:hover{
-background:#354bd1;
+background:#1a237e;
+}
+
+#dreamText, #lottoNumbers {
+    margin: 15px 0;
+    font-weight: bold;
+    color: #555;
+}
+
+#score {
+    font-size: 1.2em;
+    color: #d32f2f;
+    font-weight: 800;
 }
 
 #ranking{
 text-align:left;
+padding: 10px;
+line-height: 1.8;
 }
 
 </style>
@@ -87,35 +137,41 @@ text-align:left;
 <!-- 꿈 해몽 -->
 <div class="card">
 
-<h2> 꿈해몽 + 로또</h2>
+<h2> ✨ 꿈해몽 삽화 + 로또 ✨</h2>
 
-<input id="dreamInput" placeholder="꿈 내용을 입력하세요">
-<button onclick="analyzeDream()">분석</button>
+<div style="margin-bottom: 20px;">
+    <input id="dreamInput" placeholder="어젯밤 어떤 꿈을 꾸셨나요?">
+    <button onclick="analyzeDream()">분석하기</button>
+</div>
 
-<p id="dreamText"></p>
-<p id="lottoNumbers"></p>
+<canvas id="dreamCanvas" width="400" height="300"></canvas>
 
-<canvas id="dreamCanvas" width="300" height="200"></canvas>
+<div id="dreamResult" style="margin-top: 20px; display: none;">
+    <p id="dreamText"></p>
+    <p id="lottoNumbers"></p>
+</div>
 
 </div>
 
 <!-- 게임 -->
 <div class="card">
 
-<h2> 꽁치 와 고래 </h2>
+<h2> 🐱 고양이의 산책 🐱</h2>
 
 <button onclick="startGame()">게임 시작</button>
 
-<p>점수: <span id="score">0</span></p>
+<p>점수: <span id="score">0</span> 원</p>
 
 <canvas id="gameCanvas" width="400" height="200"></canvas>
+
+<p style="font-size: 0.8em; color: #888; margin-top: 10px;">[Space] 키 또는 화면 클릭으로 점프하세요!</p>
 
 </div>
 
 <!-- 랭킹 -->
 <div class="card">
 
-<h2>🏆 랭킹</h2>
+<h2>🏆 명예의 전당</h2>
 
 <div id="ranking"></div>
 
@@ -128,62 +184,138 @@ text-align:left;
 /* ---------------- DREAM SYSTEM ---------------- */
 
 function randomNumbers(){
-
-let nums=[]
-
-while(nums.length<6){
-
-let n=Math.floor(Math.random()*45)+1
-if(!nums.includes(n)) nums.push(n)
-
-}
-
-return nums.sort((a,b)=>a-b)
-
+    let nums=[]
+    while(nums.length<6){
+        let n=Math.floor(Math.random()*45)+1
+        if(!nums.includes(n)) nums.push(n)
+    }
+    return nums.sort((a,b)=>a-b)
 }
 
 function analyzeDream(){
+    let dream = document.getElementById("dreamInput").value;
+    if(!dream) { alert("꿈 내용을 입력해 주세요!"); return; }
 
-let dream=document.getElementById("dreamInput").value
+    const keywords = {
+        "돈": "💰", "금": "✨", "보석": "💎", "돼지": "🐷",
+        "태몽": "👼", "아기": "👶", "강아지": "🐶", "고양이": "🐱",
+        "호랑이": "🐯", "용": "🐉", "뱀": "🐍", "물": "💧",
+        "불": "🔥", "하늘": "☁️", "똥": "💩", "나무": "🌳",
+        "조상": "👴", "귀신": "👻", "죽음": "💀", "사랑": "❤️",
+        "차": "🚗", "집": "🏠", "꽃": "🌸", "바다": "🌊"
+    };
 
-let meanings=[
-"행운이 다가오는 꿈입니다",
-"새로운 기회가 생길 수 있습니다",
-"재물운 상승의 징조입니다",
-"변화의 시작을 의미합니다",
-"좋은 인연을 만날 수 있습니다"
-]
+    let foundEmoji = "🌟";
+    for(let key in keywords) {
+        if(dream.includes(key)) {
+            foundEmoji = keywords[key];
+            break;
+        }
+    }
 
-let meaning=meanings[Math.floor(Math.random()*meanings.length)]
+    let meanings = [
+        "엄청난 재물운이 따를 길몽입니다!",
+        "뜻밖의 행운이 당신을 기다리고 있네요.",
+        "간절히 원하던 일이 드디어 결실을 맺습니다.",
+        "인생의 소중한 귀인을 만나게 될 징조입니다.",
+        "새로운 시작과 긍정적인 변화가 찾아옵니다.",
+        "걱정거리가 사라지고 마음이 평온해질 꿈입니다."
+    ];
 
-let nums=randomNumbers()
+    let meaning = meanings[Math.floor(Math.random()*meanings.length)];
+    let nums = randomNumbers();
 
-document.getElementById("dreamText").innerText="해몽: "+meaning
-document.getElementById("lottoNumbers").innerText="추천 번호: "+nums.join(", ")
+    document.getElementById("dreamResult").style.display = "block";
+    document.getElementById("dreamText").innerText = "해몽: " + meaning;
+    document.getElementById("lottoNumbers").innerText = "추천 번호: " + nums.join(", ");
 
-drawDream(nums)
-
+    drawDreamIllustration(foundEmoji, meaning, nums);
 }
 
-function drawDream(nums){
+function drawDreamIllustration(emoji, meaning, nums) {
+    let c = document.getElementById("dreamCanvas");
+    let ctx = c.getContext("2d");
+    
+    // 배경 그라데이션
+    let grad = ctx.createLinearGradient(0, 0, 0, 300);
+    grad.addColorStop(0, "#1a237e");
+    grad.addColorStop(1, "#3f51b5");
+    ctx.fillStyle = grad;
+    ctx.roundRect = function(x, y, w, h, r) {
+        if (w < 2 * r) r = w / 2;
+        if (h < 2 * r) r = h / 2;
+        this.beginPath();
+        this.moveTo(x + r, y);
+        this.arcTo(x + w, y, x + w, y + h, r);
+        this.arcTo(x + w, y + h, x, y + h, r);
+        this.arcTo(x, y + h, x, y, r);
+        this.arcTo(x, y, x + w, y, r);
+        this.closePath();
+        return this;
+    }
+    ctx.fillRect(0, 0, 400, 300);
 
-let c=document.getElementById("dreamCanvas")
-let ctx=c.getContext("2d")
+    // 밤하늘 별 효과
+    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+    for(let i=0; i<50; i++) {
+        ctx.beginPath();
+        ctx.arc(Math.random()*400, Math.random()*220, Math.random()*1.5, 0, Math.PI*2);
+        ctx.fill();
+    }
 
-ctx.clearRect(0,0,300,200)
+    // 메인 삽화 (이모지)
+    ctx.font = "100px serif";
+    ctx.textAlign = "center";
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+    ctx.fillText(emoji, 200, 130);
+    ctx.shadowBlur = 0;
 
-ctx.font="40px serif"
-ctx.fillText("🌙",20,80)
-ctx.fillText("🐯",200,80)
+    // 해몽 텍스트
+    ctx.font = "bold 18px 'Pretendard', sans-serif";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(meaning, 200, 190);
 
-ctx.font="20px sans-serif"
+    // 로또 공 디자인
+    let colors = ["#fbc02d", "#1976d2", "#d32f2f", "#7b1fa2", "#388e3c"];
+    nums.forEach((n, i) => {
+        let x = 65 + i * 54;
+        let y = 250;
+        
+        // 공 그림자
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "rgba(0,0,0,0.3)";
+        ctx.beginPath();
+        ctx.arc(x, y, 22, 0, Math.PI*2);
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        
+        // 공 하이라이트
+        let highlight = ctx.createRadialGradient(x-5, y-5, 2, x, y, 22);
+        highlight.addColorStop(0, "rgba(255,255,255,0.4)");
+        highlight.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = highlight;
+        ctx.fill();
 
-nums.forEach((n,i)=>{
+        // 번호
+        ctx.font = "bold 18px Arial";
+        ctx.fillStyle = "white";
+        ctx.fillText(n, x, y + 7);
+    });
+}
 
-ctx.fillText(n,30+i*40,150)
-
-})
-
+// 초기 안내 화면 그리기
+window.onload = function() {
+    let c = document.getElementById("dreamCanvas");
+    let ctx = c.getContext("2d");
+    ctx.fillStyle = "#3f51b5";
+    ctx.fillRect(0, 0, 400, 300);
+    ctx.font = "20px 'Pretendard', sans-serif";
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.fillText("꿈 내용을 입력하고", 200, 140);
+    ctx.fillText("분석하기 버튼을 눌러보세요!", 200, 170);
 }
 
 /* ---------------- GAME SYSTEM ---------------- */
@@ -204,196 +336,123 @@ let speed=3
 let spawnTimer=0
 
 function startGame(){
-
-cat.y=150
-cat.vy=0
-dogs=[]
-items=[]
-score=0
-speed=3
-gameRunning=true
-
-loop()
-
+    cat.y=150
+    cat.vy=0
+    dogs=[]
+    items=[]
+    score=0
+    speed=3
+    gameRunning=true
+    loop()
 }
 
 function jump(){
-
-if(cat.y>=150){
-cat.vy=-12
-}
-
+    if(cat.y>=150){
+        cat.vy=-12
+    }
 }
 
 document.addEventListener("keydown",e=>{
-if(e.code==="Space") jump()
+    if(e.code==="Space") jump()
 })
 
 canvas.addEventListener("click",jump)
 canvas.addEventListener("touchstart",jump)
 
 function spawn(){
-
-spawnTimer++
-
-if(spawnTimer>80){
-
-spawnTimer=0
-
-let r=Math.random()
-
-// 강아지 낮은 확률
-if(r<0.15){
-
-dogs.push({x:420,y:150})
-
-}
-
-// 아이템
-else{
-
-let itemsList=[
-{emoji:"🪙",value:500},
-{emoji:"💵",value:10000},
-{emoji:"💴",value:50000},
-{emoji:"🎁",value:5000000},
-{emoji:"🏅",value:10000000},
-{emoji:"🚗",value:50000000},
-{emoji:"🏠",value:1000000000}
-]
-
-let item=itemsList[Math.floor(Math.random()*itemsList.length)]
-
-items.push({x:420,y:150,emoji:item.emoji,value:item.value})
-
-}
-
-}
-
+    spawnTimer++
+    if(spawnTimer>80){
+        spawnTimer=0
+        let r=Math.random()
+        if(r<0.15){
+            dogs.push({x:420,y:150})
+        }
+        else{
+            let itemsList=[
+                {emoji:"🪙",value:500},
+                {emoji:"💵",value:10000},
+                {emoji:"💴",value:50000},
+                {emoji:"🎁",value:5000000},
+                {emoji:"🏅",value:10000000},
+                {emoji:"🚗",value:50000000},
+                {emoji:"🏠",value:1000000000}
+            ]
+            let item=itemsList[Math.floor(Math.random()*itemsList.length)]
+            items.push({x:420,y:150,emoji:item.emoji,value:item.value})
+        }
+    }
 }
 
 function update(){
-
-cat.vy+=gravity
-cat.y+=cat.vy
-
-if(cat.y>150){
-cat.y=150
-cat.vy=0
-}
-
-spawn()
-
-// dogs
-dogs.forEach((d,i)=>{
-
-d.x-=speed
-
-if(d.x<0) dogs.splice(i,1)
-
-if(Math.abs(d.x-cat.x)<20 && cat.y>130){
-
-endGame()
-
-}
-
-})
-
-// items
-items.forEach((it,i)=>{
-
-it.x-=speed
-
-if(it.x<0) items.splice(i,1)
-
-if(Math.abs(it.x-cat.x)<20){
-
-score+=it.value
-items.splice(i,1)
-
-}
-
-})
-
-let level=Math.floor(score/100000000)
-
-speed=3*(1+level*0.1)
-
+    cat.vy+=gravity
+    cat.y+=cat.vy
+    if(cat.y>150){
+        cat.y=150
+        cat.vy=0
+    }
+    spawn()
+    dogs.forEach((d,i)=>{
+        d.x-=speed
+        if(d.x<0) dogs.splice(i,1)
+        if(Math.abs(d.x-cat.x)<20 && cat.y>130){
+            endGame()
+        }
+    })
+    items.forEach((it,i)=>{
+        it.x-=speed
+        if(it.x<0) items.splice(i,1)
+        if(Math.abs(it.x-cat.x)<20){
+            score+=it.value
+            items.splice(i,1)
+        }
+    })
+    let level=Math.floor(score/100000000)
+    speed=3*(1+level*0.1)
 }
 
 function draw(){
-
-ctx.clearRect(0,0,400,200)
-
-ctx.font="30px serif"
-ctx.fillText("🐱",cat.x,cat.y)
-
-ctx.font="40px serif"
-dogs.forEach(d=>ctx.fillText("🐶",d.x,d.y))
-
-ctx.font="25px serif"
-items.forEach(it=>ctx.fillText(it.emoji,it.x,it.y))
-
-document.getElementById("score").innerText=
-score.toLocaleString()+" 원"
-
+    ctx.clearRect(0,0,400,200)
+    ctx.font="30px serif"
+    ctx.fillText("🐱",cat.x,cat.y)
+    ctx.font="40px serif"
+    dogs.forEach(d=>ctx.fillText("🐶",d.x,d.y))
+    ctx.font="25px serif"
+    items.forEach(it=>ctx.fillText(it.emoji,it.x,it.y))
+    document.getElementById("score").innerText = score.toLocaleString()
 }
 
 function loop(){
-
-if(!gameRunning) return
-
-update()
-draw()
-
-requestAnimationFrame(loop)
-
+    if(!gameRunning) return
+    update()
+    draw()
+    requestAnimationFrame(loop)
 }
 
 function endGame(){
-
-gameRunning=false
-
-let name=prompt("이름 입력")
-
-if(!name) name="익명"
-
-saveRanking(name,score)
-
-showRanking()
-
+    gameRunning=false
+    let name=prompt("게임 오버! 이름을 입력해 주세요.")
+    if(!name) name="익명"
+    saveRanking(name,score)
+    showRanking()
 }
 
 /* ---------------- RANKING ---------------- */
 
 function saveRanking(name,score){
-
-let ranking=JSON.parse(localStorage.getItem("ranking")||"[]")
-
-ranking.push({name,score})
-
-ranking.sort((a,b)=>b.score-a.score)
-
-ranking=ranking.slice(0,10)
-
-localStorage.setItem("ranking",JSON.stringify(ranking))
-
+    let ranking=JSON.parse(localStorage.getItem("ranking")||"[]")
+    ranking.push({name,score})
+    ranking.sort((a,b)=>b.score-a.score)
+    ranking=ranking.slice(0,10)
+    localStorage.setItem("ranking",JSON.stringify(ranking))
 }
 
 function showRanking(){
-
-let ranking=JSON.parse(localStorage.getItem("ranking")||"[]")
-
-let html=""
-
-ranking.forEach((r,i)=>{
-
-html+=`${i+1}. ${r.name} - ${r.score.toLocaleString()} 원<br>`
-
-})
-
-document.getElementById("ranking").innerHTML=html
-
+    let ranking=JSON.parse(localStorage.getItem("ranking")||"[]")
+    let html=""
+    ranking.forEach((r,i)=>{
+        html+=`${i+1}. ${r.name} - ${r.score.toLocaleString()} 원<br>`
+    })
+    document.getElementById("ranking").innerHTML=html || "아직 랭킹이 없습니다. 첫 번째 주인공이 되어보세요!"
 }
 
 showRanking()
