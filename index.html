@@ -198,6 +198,8 @@ line-height: 1.8;
 
 /* ---------------- DREAM SYSTEM ---------------- */
 
+let isAnalyzing = false;
+
 function randomNumbers(){
     let nums=[]
     while(nums.length<6){
@@ -208,14 +210,18 @@ function randomNumbers(){
 }
 
 async function analyzeDream(){
+    if (isAnalyzing) return;
+    
     let dream = document.getElementById("dreamInput").value;
     let btn = document.getElementById("analyzeBtn");
     let statusMsg = document.getElementById("statusMsg");
     
     if(!dream) { alert("꿈 내용을 입력해 주세요!"); return; }
 
+    isAnalyzing = true;
     btn.disabled = true;
     statusMsg.style.display = "block";
+    document.getElementById("dreamResult").style.display = "none";
     
     // 캔버스 초기화 및 대기 화면
     let c = document.getElementById("dreamCanvas");
@@ -242,36 +248,43 @@ async function analyzeDream(){
 
     // AI 이미지 생성 (Pollinations AI)
     const seed = Math.floor(Math.random() * 1000000);
-    const prompt = encodeURIComponent(dream + ", digital art, dreamy, fantasy style, high detail");
+    const prompt = encodeURIComponent(dream + ", fantasy art, vibrant colors, dreamlike atmosphere, high quality");
     const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=400&height=300&nologo=true&seed=${seed}`;
 
     const img = new Image();
     img.crossOrigin = "anonymous";
     
-    // 타임아웃 처리 (15초)
+    let handled = false;
+
     const timeout = setTimeout(() => {
-        if (!img.complete) {
-            img.src = ""; // 로딩 중단
-            handleFallback(meaning, nums, "시간 초과로 인해 기본 테마로 대체합니다.");
+        if (!handled) {
+            handled = true;
+            handleFallback(meaning, nums, "Timeout");
         }
     }, 15000);
 
     img.onload = function() {
-        clearTimeout(timeout);
-        drawDreamIllustration(img, meaning, nums);
-        finishAnalysis(meaning, nums);
+        if (!handled) {
+            handled = true;
+            clearTimeout(timeout);
+            drawDreamIllustration(img, meaning, nums);
+            finishAnalysis(meaning, nums);
+        }
     };
 
     img.onerror = function() {
-        clearTimeout(timeout);
-        handleFallback(meaning, nums, "이미지 로드 오류로 인해 기본 테마로 대체합니다.");
+        if (!handled) {
+            handled = true;
+            clearTimeout(timeout);
+            handleFallback(meaning, nums, "Error loading image");
+        }
     };
 
     img.src = imageUrl;
 }
 
-function handleFallback(meaning, nums, errorMsg) {
-    console.warn(errorMsg);
+function handleFallback(meaning, nums, reason) {
+    console.log("Using fallback theme due to:", reason);
     drawDreamIllustration(null, meaning, nums);
     finishAnalysis(meaning, nums);
 }
@@ -282,13 +295,14 @@ function finishAnalysis(meaning, nums) {
     document.getElementById("lottoNumbers").innerText = "추천 번호: " + nums.join(", ");
     document.getElementById("analyzeBtn").disabled = false;
     document.getElementById("statusMsg").style.display = "none";
+    isAnalyzing = false;
 }
 
 function drawDreamIllustration(img, meaning, nums) {
     let c = document.getElementById("dreamCanvas");
     let ctx = c.getContext("2d");
     
-    if (img && img.src !== "") {
+    if (img && img.complete && img.naturalWidth !== 0) {
         ctx.drawImage(img, 0, 0, 400, 300);
         ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
         ctx.fillRect(0, 210, 400, 90);
