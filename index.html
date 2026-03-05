@@ -231,8 +231,8 @@ async function analyzeDream(){
     ctx.font = "18px 'Pretendard', sans-serif";
     ctx.fillStyle = "white";
     ctx.textAlign = "center";
-    ctx.fillText("AI가 꿈의 내용을 분석하여", 200, 130);
-    ctx.fillText("멋진 삽화를 그리고 있습니다...", 200, 160);
+    ctx.fillText("AI가 꿈의 의미를 해석하여", 200, 130);
+    ctx.fillText("예술적인 삽화를 그리고 있습니다...", 200, 160);
 
     let meanings = [
         "엄청난 재물운이 따를 길몽입니다!",
@@ -246,9 +246,10 @@ async function analyzeDream(){
     let meaning = meanings[Math.floor(Math.random()*meanings.length)];
     let nums = randomNumbers();
 
-    // AI 이미지 생성 (Pollinations AI)
+    // AI 이미지 생성 (Pollinations AI) - 프롬프트 고도화
     const seed = Math.floor(Math.random() * 1000000);
-    const prompt = encodeURIComponent(dream + ", fantasy art, vibrant colors, dreamlike atmosphere, high quality");
+    const complexPrompt = `A high-quality, surreal, and symbolic digital painting representing a dream about: ${dream}. Dramatic lighting, masterpiece, detailed textures, cinematic atmosphere, mystical and ethereal vibes, trending on artstation.`;
+    const prompt = encodeURIComponent(complexPrompt);
     const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=400&height=300&nologo=true&seed=${seed}`;
 
     const img = new Image();
@@ -256,12 +257,13 @@ async function analyzeDream(){
     
     let handled = false;
 
+    // 고품질 생성을 위해 타임아웃을 30초로 연장
     const timeout = setTimeout(() => {
         if (!handled) {
             handled = true;
             handleFallback(meaning, nums, "Timeout");
         }
-    }, 15000);
+    }, 30000);
 
     img.onload = function() {
         if (!handled) {
@@ -304,8 +306,12 @@ function drawDreamIllustration(img, meaning, nums) {
     
     if (img && img.complete && img.naturalWidth !== 0) {
         ctx.drawImage(img, 0, 0, 400, 300);
-        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-        ctx.fillRect(0, 210, 400, 90);
+        // 하단 텍스트 영역 가독성 확보
+        let grad = ctx.createLinearGradient(0, 200, 0, 300);
+        grad.addColorStop(0, "rgba(0, 0, 0, 0)");
+        grad.addColorStop(1, "rgba(0, 0, 0, 0.7)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 180, 400, 120);
     } else {
         let grad = ctx.createLinearGradient(0, 0, 0, 300);
         grad.addColorStop(0, "#1a237e");
@@ -322,7 +328,7 @@ function drawDreamIllustration(img, meaning, nums) {
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "center";
     ctx.shadowBlur = 4;
-    ctx.shadowColor = "black";
+    ctx.shadowColor = "rgba(0,0,0,0.8)";
     ctx.fillText(meaning, 200, 235);
     ctx.shadowBlur = 0;
 
