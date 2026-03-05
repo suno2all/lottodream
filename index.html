@@ -241,42 +241,58 @@ async function analyzeDream(){
     let nums = randomNumbers();
 
     // AI 이미지 생성 (Pollinations AI)
-    const prompt = encodeURIComponent(dream + " anime style fantasy dream illustration bright colors high quality 4k digital art");
-    const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=400&height=300&nologo=true`;
+    const seed = Math.floor(Math.random() * 1000000);
+    const prompt = encodeURIComponent(dream + ", digital art, dreamy, fantasy style, high detail");
+    const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=400&height=300&nologo=true&seed=${seed}`;
 
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = imageUrl;
+    
+    // 타임아웃 처리 (15초)
+    const timeout = setTimeout(() => {
+        if (!img.complete) {
+            img.src = ""; // 로딩 중단
+            handleFallback(meaning, nums, "시간 초과로 인해 기본 테마로 대체합니다.");
+        }
+    }, 15000);
 
     img.onload = function() {
+        clearTimeout(timeout);
         drawDreamIllustration(img, meaning, nums);
-        document.getElementById("dreamResult").style.display = "block";
-        document.getElementById("dreamText").innerText = "해몽: " + meaning;
-        document.getElementById("lottoNumbers").innerText = "추천 번호: " + nums.join(", ");
-        btn.disabled = false;
-        statusMsg.style.display = "none";
+        finishAnalysis(meaning, nums);
     };
 
     img.onerror = function() {
-        // 이미지 로드 실패 시 기본 이모지 모드로 대체
-        drawDreamIllustration(null, meaning, nums);
-        btn.disabled = false;
-        statusMsg.style.display = "none";
-        alert("AI 이미지 생성 중 오류가 발생하여 기본 테마로 대체합니다.");
+        clearTimeout(timeout);
+        handleFallback(meaning, nums, "이미지 로드 오류로 인해 기본 테마로 대체합니다.");
     };
+
+    img.src = imageUrl;
+}
+
+function handleFallback(meaning, nums, errorMsg) {
+    console.warn(errorMsg);
+    drawDreamIllustration(null, meaning, nums);
+    finishAnalysis(meaning, nums);
+}
+
+function finishAnalysis(meaning, nums) {
+    document.getElementById("dreamResult").style.display = "block";
+    document.getElementById("dreamText").innerText = "해몽: " + meaning;
+    document.getElementById("lottoNumbers").innerText = "추천 번호: " + nums.join(", ");
+    document.getElementById("analyzeBtn").disabled = false;
+    document.getElementById("statusMsg").style.display = "none";
 }
 
 function drawDreamIllustration(img, meaning, nums) {
     let c = document.getElementById("dreamCanvas");
     let ctx = c.getContext("2d");
     
-    if (img) {
+    if (img && img.src !== "") {
         ctx.drawImage(img, 0, 0, 400, 300);
-        // 이미지 위에 반투명 오버레이 (텍스트 가독성)
         ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
         ctx.fillRect(0, 210, 400, 90);
     } else {
-        // 배경 그라데이션
         let grad = ctx.createLinearGradient(0, 0, 0, 300);
         grad.addColorStop(0, "#1a237e");
         grad.addColorStop(1, "#3f51b5");
@@ -288,7 +304,6 @@ function drawDreamIllustration(img, meaning, nums) {
         ctx.fillText("🌟", 200, 140);
     }
 
-    // 해몽 텍스트
     ctx.font = "bold 16px 'Pretendard', sans-serif";
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "center";
@@ -297,7 +312,6 @@ function drawDreamIllustration(img, meaning, nums) {
     ctx.fillText(meaning, 200, 235);
     ctx.shadowBlur = 0;
 
-    // 로또 공 디자인
     let colors = ["#fbc02d", "#1976d2", "#d32f2f", "#7b1fa2", "#388e3c"];
     nums.forEach((n, i) => {
         let x = 65 + i * 54;
@@ -317,7 +331,6 @@ function drawDreamIllustration(img, meaning, nums) {
     });
 }
 
-// 초기 안내 화면 그리기
 window.onload = function() {
     let c = document.getElementById("dreamCanvas");
     let ctx = c.getContext("2d");
@@ -328,6 +341,7 @@ window.onload = function() {
     ctx.textAlign = "center";
     ctx.fillText("꿈 내용을 입력하고", 200, 140);
     ctx.fillText("분석하기 버튼을 눌러보세요!", 200, 170);
+    showRanking();
 }
 
 /* ---------------- GAME SYSTEM ---------------- */
@@ -337,14 +351,11 @@ let ctx=canvas.getContext("2d")
 
 let cat={x:50,y:150,vy:0}
 let gravity=0.8
-
 let dogs=[]
 let items=[]
-
 let score=0
 let gameRunning=false
 let speed=3
-
 let spawnTimer=0
 
 function startGame(){
@@ -448,8 +459,6 @@ function endGame(){
     showRanking()
 }
 
-/* ---------------- RANKING ---------------- */
-
 function saveRanking(name,score){
     let ranking=JSON.parse(localStorage.getItem("ranking")||"[]")
     ranking.push({name,score})
@@ -466,8 +475,6 @@ function showRanking(){
     })
     document.getElementById("ranking").innerHTML=html || "아직 랭킹이 없습니다. 첫 번째 주인공이 되어보세요!"
 }
-
-showRanking()
 
 </script>
 
