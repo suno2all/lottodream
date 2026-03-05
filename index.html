@@ -90,8 +90,8 @@ box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
     border-color: #3949ab;
 }
 
-button{
-padding:12px 25px;
+#analyzeBtn {
+padding: 12px 25px;
 border:none;
 border-radius:12px;
 background:#3949ab;
@@ -100,11 +100,16 @@ cursor:pointer;
 font-weight: bold;
 font-size: 16px;
 margin-left: 10px;
-transition: background 0.3s;
+transition: all 0.3s;
 }
 
-button:hover{
+#analyzeBtn:hover:not(:disabled){
 background:#1a237e;
+}
+
+#analyzeBtn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
 }
 
 #dreamText, #lottoNumbers {
@@ -125,6 +130,14 @@ padding: 10px;
 line-height: 1.8;
 }
 
+.loading-text {
+    font-size: 14px;
+    color: #3949ab;
+    margin-top: 10px;
+    font-weight: bold;
+    display: none;
+}
+
 </style>
 </head>
 
@@ -137,12 +150,14 @@ line-height: 1.8;
 <!-- 꿈 해몽 -->
 <div class="card">
 
-<h2> ✨ 꿈해몽 삽화 + 로또 ✨</h2>
+<h2> ✨ 꿈해몽 AI 삽화 + 로또 ✨</h2>
 
 <div style="margin-bottom: 20px;">
     <input id="dreamInput" placeholder="어젯밤 어떤 꿈을 꾸셨나요?">
-    <button onclick="analyzeDream()">분석하기</button>
+    <button id="analyzeBtn" onclick="analyzeDream()">분석하기</button>
 </div>
+
+<p id="statusMsg" class="loading-text">AI가 꿈을 삽화로 그리고 있습니다. 기다리는 동안 고양이의 산책 게임을 즐겨보세요!</p>
 
 <canvas id="dreamCanvas" width="400" height="300"></canvas>
 
@@ -192,26 +207,26 @@ function randomNumbers(){
     return nums.sort((a,b)=>a-b)
 }
 
-function analyzeDream(){
+async function analyzeDream(){
     let dream = document.getElementById("dreamInput").value;
+    let btn = document.getElementById("analyzeBtn");
+    let statusMsg = document.getElementById("statusMsg");
+    
     if(!dream) { alert("꿈 내용을 입력해 주세요!"); return; }
 
-    const keywords = {
-        "돈": "💰", "금": "✨", "보석": "💎", "돼지": "🐷",
-        "태몽": "👼", "아기": "👶", "강아지": "🐶", "고양이": "🐱",
-        "호랑이": "🐯", "용": "🐉", "뱀": "🐍", "물": "💧",
-        "불": "🔥", "하늘": "☁️", "똥": "💩", "나무": "🌳",
-        "조상": "👴", "귀신": "👻", "죽음": "💀", "사랑": "❤️",
-        "차": "🚗", "집": "🏠", "꽃": "🌸", "바다": "🌊"
-    };
-
-    let foundEmoji = "🌟";
-    for(let key in keywords) {
-        if(dream.includes(key)) {
-            foundEmoji = keywords[key];
-            break;
-        }
-    }
+    btn.disabled = true;
+    statusMsg.style.display = "block";
+    
+    // 캔버스 초기화 및 대기 화면
+    let c = document.getElementById("dreamCanvas");
+    let ctx = c.getContext("2d");
+    ctx.fillStyle = "#1a237e";
+    ctx.fillRect(0, 0, 400, 300);
+    ctx.font = "18px 'Pretendard', sans-serif";
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.fillText("AI가 꿈의 내용을 분석하여", 200, 130);
+    ctx.fillText("멋진 삽화를 그리고 있습니다...", 200, 160);
 
     let meanings = [
         "엄청난 재물운이 따를 길몽입니다!",
@@ -225,83 +240,80 @@ function analyzeDream(){
     let meaning = meanings[Math.floor(Math.random()*meanings.length)];
     let nums = randomNumbers();
 
-    document.getElementById("dreamResult").style.display = "block";
-    document.getElementById("dreamText").innerText = "해몽: " + meaning;
-    document.getElementById("lottoNumbers").innerText = "추천 번호: " + nums.join(", ");
+    // AI 이미지 생성 (Pollinations AI)
+    const prompt = encodeURIComponent(dream + " anime style fantasy dream illustration bright colors high quality 4k digital art");
+    const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=400&height=300&nologo=true`;
 
-    drawDreamIllustration(foundEmoji, meaning, nums);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = imageUrl;
+
+    img.onload = function() {
+        drawDreamIllustration(img, meaning, nums);
+        document.getElementById("dreamResult").style.display = "block";
+        document.getElementById("dreamText").innerText = "해몽: " + meaning;
+        document.getElementById("lottoNumbers").innerText = "추천 번호: " + nums.join(", ");
+        btn.disabled = false;
+        statusMsg.style.display = "none";
+    };
+
+    img.onerror = function() {
+        // 이미지 로드 실패 시 기본 이모지 모드로 대체
+        drawDreamIllustration(null, meaning, nums);
+        btn.disabled = false;
+        statusMsg.style.display = "none";
+        alert("AI 이미지 생성 중 오류가 발생하여 기본 테마로 대체합니다.");
+    };
 }
 
-function drawDreamIllustration(emoji, meaning, nums) {
+function drawDreamIllustration(img, meaning, nums) {
     let c = document.getElementById("dreamCanvas");
     let ctx = c.getContext("2d");
     
-    // 배경 그라데이션
-    let grad = ctx.createLinearGradient(0, 0, 0, 300);
-    grad.addColorStop(0, "#1a237e");
-    grad.addColorStop(1, "#3f51b5");
-    ctx.fillStyle = grad;
-    ctx.roundRect = function(x, y, w, h, r) {
-        if (w < 2 * r) r = w / 2;
-        if (h < 2 * r) r = h / 2;
-        this.beginPath();
-        this.moveTo(x + r, y);
-        this.arcTo(x + w, y, x + w, y + h, r);
-        this.arcTo(x + w, y + h, x, y + h, r);
-        this.arcTo(x, y + h, x, y, r);
-        this.arcTo(x, y, x + w, y, r);
-        this.closePath();
-        return this;
+    if (img) {
+        ctx.drawImage(img, 0, 0, 400, 300);
+        // 이미지 위에 반투명 오버레이 (텍스트 가독성)
+        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+        ctx.fillRect(0, 210, 400, 90);
+    } else {
+        // 배경 그라데이션
+        let grad = ctx.createLinearGradient(0, 0, 0, 300);
+        grad.addColorStop(0, "#1a237e");
+        grad.addColorStop(1, "#3f51b5");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 400, 300);
+        
+        ctx.font = "100px serif";
+        ctx.textAlign = "center";
+        ctx.fillText("🌟", 200, 140);
     }
-    ctx.fillRect(0, 0, 400, 300);
-
-    // 밤하늘 별 효과
-    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-    for(let i=0; i<50; i++) {
-        ctx.beginPath();
-        ctx.arc(Math.random()*400, Math.random()*220, Math.random()*1.5, 0, Math.PI*2);
-        ctx.fill();
-    }
-
-    // 메인 삽화 (이모지)
-    ctx.font = "100px serif";
-    ctx.textAlign = "center";
-    ctx.shadowBlur = 30;
-    ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
-    ctx.fillText(emoji, 200, 130);
-    ctx.shadowBlur = 0;
 
     // 해몽 텍스트
-    ctx.font = "bold 18px 'Pretendard', sans-serif";
+    ctx.font = "bold 16px 'Pretendard', sans-serif";
     ctx.fillStyle = "#ffffff";
-    ctx.fillText(meaning, 200, 190);
+    ctx.textAlign = "center";
+    ctx.shadowBlur = 4;
+    ctx.shadowColor = "black";
+    ctx.fillText(meaning, 200, 235);
+    ctx.shadowBlur = 0;
 
     // 로또 공 디자인
     let colors = ["#fbc02d", "#1976d2", "#d32f2f", "#7b1fa2", "#388e3c"];
     nums.forEach((n, i) => {
         let x = 65 + i * 54;
-        let y = 250;
+        let y = 270;
         
-        // 공 그림자
         ctx.shadowBlur = 10;
-        ctx.shadowColor = "rgba(0,0,0,0.3)";
+        ctx.shadowColor = "rgba(0,0,0,0.5)";
         ctx.beginPath();
-        ctx.arc(x, y, 22, 0, Math.PI*2);
+        ctx.arc(x, y, 20, 0, Math.PI*2);
         ctx.fillStyle = colors[i % colors.length];
         ctx.fill();
         ctx.shadowBlur = 0;
         
-        // 공 하이라이트
-        let highlight = ctx.createRadialGradient(x-5, y-5, 2, x, y, 22);
-        highlight.addColorStop(0, "rgba(255,255,255,0.4)");
-        highlight.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.fillStyle = highlight;
-        ctx.fill();
-
-        // 번호
-        ctx.font = "bold 18px Arial";
+        ctx.font = "bold 16px Arial";
         ctx.fillStyle = "white";
-        ctx.fillText(n, x, y + 7);
+        ctx.fillText(n, x, y + 6);
     });
 }
 
